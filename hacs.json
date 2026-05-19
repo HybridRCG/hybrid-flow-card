@@ -1,0 +1,10 @@
+{
+  "name": "Hybrid Flow Card",
+  "render_readme": true,
+  "filename": "hybrid-flow-card.js",
+  "category": "lovelace",
+  "homeassistant": "2023.8.0",
+  "description": "Solar / battery / grid energy flow visualization card with animated power lines, sun arc, and battery SOC fill.",
+  "country": ["ZA"],
+  "authors": ["Riaan Grobler <hybrid.rcg@gmail.com>"]
+}
