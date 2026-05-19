@@ -235,35 +235,20 @@ class HybridFlowCard extends HTMLElement {
 
   setConfig(config) {
     this.config = {
-      pv1_power: 'sensor.goodwe_pv1_power',
-      pv2_power: 'sensor.goodwe_pv2_power',
-      pv_total_power: 'sensor.goodwe_pv_power',
-      grid_active_power: 'sensor.goodwe_active_power',
-      grid_import_energy: 'sensor.sunsynk_sunsynk_day_grid_import',
-      consump: 'sensor.goodwe_house_consumption',
-      today_pv: 'sensor.goodwe_today_s_pv_generation',
-      today_batt_chg: 'sensor.goodwe_today_battery_charge',
-      today_load: 'sensor.goodwe_today_load',
-      battery_soc: 'sensor.jk_soc',
-      battery_power: 'sensor.jk_power',
-      battery_current: 'sensor.jk_current',
-      battery_voltage: 'sensor.jk_voltage',
-      battery_temp1: 'sensor.jk_temp1',
-      battery_temp2: 'sensor.jk_temp2',
-      battery_mos: 'sensor.jk_mos',
-      battery_min_cell: 'sensor.jk_cellmin',
-      battery_max_cell: 'sensor.jk_cellmax',
-      battery_rem_cap: 'sensor.jk_remain',
-      goodwe_battery_soc: 'sensor.goodwe_battery_state_of_charge',
-      goodwe_battery_curr: 'sensor.goodwe_battery_current',
-      inv_temp: 'sensor.goodwe_inverter_temperature_module',
-      batt_dis: 'sensor.goodwe_today_battery_discharge',
-      grid_power_alt: 'sensor.grid_phase_a_power',
+      pv1_power: '',
+      pv2_power: '',
+      pv_total_power: '',
+      grid_active_power: '',
+      grid_power_alt: '',
+      grid_import_energy: '',
+      consump: '',
+      battery_soc: '',
+      battery_power: '',
+      goodwe_battery_soc: '',
+      outdoor_temp: '',
+      remaining_time: '',
+      grid_voltage: '',
       sun: 'sun.sun',
-      outdoor_temp: 'sensor.gw2000a_v2_1_8_outdoor_temperature',
-      remaining_time: 'sensor.remaining_time_2',
-      inv_status: 'sensor.sunsynk_sunsynk_overall_state',
-      grid_voltage: 'sensor.sunsynk_grid_voltage',
       home_icon: '/local/hybrid_flow/home-icon.png',
       grid_icon: '/local/hybrid_flow/grid-icon.png',
       inv_icon: '/local/hybrid_flow/sunsynk.png',
@@ -748,41 +733,40 @@ class HybridFlowCardEditor extends HTMLElement {
           <span style="font-size:13px;font-weight:500;color:var(--primary-text-color)">Configure your sensors</span>
           <span style="font-size:11px;color:var(--secondary-text-color);display:block;margin-top:2px">Entity IDs from your HA instance</span>
         </div>
-        ${this._field('pv1_power', 'PV String 1 Power', 'sensor.goodwe_pv1_power')}
-        ${this._field('pv2_power', 'PV String 2 Power', 'sensor.goodwe_pv2_power')}
-        ${this._field('pv_total_power', 'PV Total (optional)', '')}
-        ${this._field('grid_active_power', 'Grid Active Power', 'sensor.goodwe_active_power')}
-        ${this._field('grid_import_energy', 'Grid Import Energy', 'sensor.sunsynk_day_grid_import')}
-        ${this._field('grid_voltage', 'Grid Voltage', '')}
-        ${this._field('battery_soc', 'Battery SOC', 'sensor.jk_soc')}
-        ${this._field('battery_power', 'Battery Power', 'sensor.jk_power')}
-        ${this._field('remaining_time', 'Remaining Time (optional)', '')}
-        ${this._field('consump', 'House Consumption', 'sensor.goodwe_house_consumption')}
-        ${this._field('outdoor_temp', 'Outdoor Temperature (optional)', '')}
-        ${this._field('sun', 'Sun Entity', 'sun.sun')}
+        ${this._field('pv1_power', 'PV String 1')}
+        ${this._field('pv2_power', 'PV String 2')}
+        ${this._field('pv_total_power', 'PV Total (optional)')}
+        ${this._field('grid_active_power', 'Grid Active Power')}
+        ${this._field('grid_import_energy', 'Grid Import Energy')}
+        ${this._field('grid_voltage', 'Grid Voltage (optional)')}
+        ${this._field('battery_soc', 'Battery SOC')}
+        ${this._field('battery_power', 'Battery Power')}
+        ${this._field('remaining_time', 'Remaining Time (optional)')}
+        ${this._field('consump', 'House Consumption')}
+        ${this._field('outdoor_temp', 'Outdoor Temperature (optional)')}
+        ${this._field('sun', 'Sun Entity')}
         ${this._cb('full_width', 'Full Width')}
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--divider-color,#333)">
           <details>
             <summary style="font-size:12px;color:var(--secondary-text-color);cursor:pointer">Advanced icon paths</summary>
             <div style="margin-top:8px">
-              ${this._field('home_icon', 'Home Icon', '/local/hybrid_flow/home-icon.png')}
-              ${this._field('grid_icon', 'Grid Icon', '/local/hybrid_flow/grid-icon.png')}
-              ${this._field('inv_icon', 'Inverter Icon', '/local/hybrid_flow/sunsynk.png')}
+              ${this._field('home_icon', 'Home Icon')}
+              ${this._field('grid_icon', 'Grid Icon')}
+              ${this._field('inv_icon', 'Inverter Icon')}
             </div>
           </details>
         </div>
-        <div style="margin-top:16px;font-size:11px;color:var(--secondary-text-color);opacity:0.7;font-style:italic">Additional optional sensor entities (battery current/voltage/BMS temps, inverter temp, etc.) can be added via YAML.</div>
       </div>`;
     this._bindEvents();
   }
 
-  _field(key, label, placeholder) {
+  _field(key, label) {
     const val = this._config[key] || '';
     return `<div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
         <label style="font-size:12px;font-weight:500;color:var(--secondary-text-color)" for="hfc-${key}">${label}</label>
       </div>
-      <input id="hfc-${key}" type="text" value="${val.replace(/"/g, '&quot;')}" placeholder="${placeholder}" style="width:100%;padding:8px 10px;font-size:13px;font-family:inherit;background:var(--card-background-color,#0d1117);color:var(--primary-text-color,#e6edf3);border:1px solid var(--divider-color,#333);border-radius:6px;outline:none;box-sizing:border-box">
+      <input id="hfc-${key}" type="text" value="${val.replace(/"/g, '&quot;')}" placeholder="sensor.entity_id" style="width:100%;padding:8px 10px;font-size:13px;font-family:inherit;background:var(--card-background-color,#0d1117);color:var(--primary-text-color,#e6edf3);border:1px solid var(--divider-color,#333);border-radius:6px;outline:none;box-sizing:border-box">
     </div>`;
   }
 
