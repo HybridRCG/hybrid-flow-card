@@ -252,50 +252,8 @@ class HybridFlowCard extends HTMLElement {
     };
   }
 
-  static get SECTION_LABELS() {
-    return [
-      ['header',     '📋 Header (date/time/temp)'],
-      ['sky_arc',    '🌅 Sky arc background'],
-      ['sun',        '☀️ Sun'],
-      ['moon',       '🌙 Moon'],
-      ['pv',         '⚡ PV label & flow'],
-      ['battery',    '🔋 Battery'],
-      ['grid',       '🔌 Grid'],
-      ['inverter',   '⚙️ Inverter'],
-      ['home',       '🏠 Home'],
-      ['flow_lines', '〰️ Flow lines & tracks'],
-    ];
-  }
-
-  _sectionStorageKey() {
-    const c = this.config || {};
-    const seed = (c.card_id || '') + '|' + (c.battery_soc || '') + '|' + (c.pv1_power || '') + '|' + (c.grid_active_power || '');
-    let h = 0; for (let i = 0; i < seed.length; i++) { h = ((h << 5) - h + seed.charCodeAt(i)) | 0; }
-    return 'hfc-sections-' + (h >>> 0).toString(36);
-  }
-  _sectionOverrides() {
-    if (this._secOvrCache) return this._secOvrCache;
-    try {
-      const raw = localStorage.getItem(this._sectionStorageKey());
-      this._secOvrCache = raw ? JSON.parse(raw) : {};
-    } catch (e) { this._secOvrCache = {}; }
-    return this._secOvrCache;
-  }
-  _setSectionOverride(key, val) {
-    const ovr = { ...this._sectionOverrides() };
-    if (val === null || val === undefined) delete ovr[key]; else ovr[key] = !!val;
-    this._secOvrCache = ovr;
-    try { localStorage.setItem(this._sectionStorageKey(), JSON.stringify(ovr)); } catch (e) {}
-  }
-  _resetSectionOverrides() {
-    this._secOvrCache = {};
-    try { localStorage.removeItem(this._sectionStorageKey()); } catch (e) {}
-  }
-
-  // Resolve effective visibility for a section: runtime override > config > default-true
+  // Resolve effective visibility for a section: config value, default true if unset.
   _isSectionVisible(key) {
-    const ovr = this._sectionOverrides();
-    if (key in ovr) return ovr[key];
     const cfgVal = this.config && this.config['show_' + key];
     return cfgVal !== false;
   }
@@ -324,70 +282,6 @@ class HybridFlowCard extends HTMLElement {
         });
       }
       this._lastSectionState[key] = visible;
-    });
-  }
-
-  // Bind ⚙ menu: build once, sync state on every call
-  _bindGearMenu() {
-    const sr = this.shadowRoot || this;
-    const btn = sr.getElementById ? sr.getElementById('hfcGearBtn') : this._el('hfcGearBtn');
-    const panel = this._el('hfcGearPanel');
-    const list = this._el('hfcGearList');
-    const reset = this._el('hfcGearReset');
-    if (!btn || !panel || !list || !reset) return;
-
-    // Visibility based on config
-    const showGear = this.config && this.config.show_gear_menu !== false;
-    btn.style.display = showGear ? '' : 'none';
-    if (!showGear) { panel.style.display = 'none'; return; }
-
-    const labels = HybridFlowCard.SECTION_LABELS;
-
-    // Build list + bind handlers once
-    if (!this._gearBuilt) {
-      list.innerHTML = labels.map(([k, l]) =>
-        `<label style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:12px;color:rgba(255,255,255,.85);cursor:pointer;gap:8px;">
-          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l}</span>
-          <input type="checkbox" data-sec="${k}" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;"/>
-        </label>`
-      ).join('');
-
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-      };
-
-      list.querySelectorAll('input[type=checkbox]').forEach(cb => {
-        cb.addEventListener('change', () => {
-          const key = cb.getAttribute('data-sec');
-          this._setSectionOverride(key, cb.checked);
-          this._applySectionVisibility();
-        });
-      });
-
-      reset.onclick = () => {
-        this._resetSectionOverrides();
-        this._applySectionVisibility();
-        this._bindGearMenu(); // re-sync checkbox state
-      };
-
-      if (!this._gearOutsideHandler) {
-        this._gearOutsideHandler = (e) => {
-          if (!panel || panel.style.display === 'none') return;
-          const path = e.composedPath ? e.composedPath() : [];
-          if (path.includes(panel) || path.includes(btn)) return;
-          panel.style.display = 'none';
-        };
-        document.addEventListener('click', this._gearOutsideHandler);
-      }
-
-      this._gearBuilt = true;
-    }
-
-    // Sync checkbox state every call
-    labels.forEach(([k]) => {
-      const cb = list.querySelector(`input[data-sec="${k}"]`);
-      if (cb) cb.checked = this._isSectionVisible(k);
     });
   }
 
@@ -422,7 +316,6 @@ class HybridFlowCard extends HTMLElement {
       show_inverter: true,
       show_home: true,
       show_flow_lines: true,
-      show_gear_menu: true,
       // ── Moon options ──
       moon_entity: '',
       southern_hemisphere: false,
@@ -553,17 +446,11 @@ class HybridFlowCard extends HTMLElement {
       .sun-core { animation: sunCoreR 2.2s ease-in-out infinite; }
     </style>
     <div id="hfcCard" style="background:#161b22;border:1px solid #21262d;border-radius:12px;padding:6px 13px 13px 13px;box-shadow:0 4px 20px rgba(0,0,0,.4);width:100%;box-sizing:border-box;transition:box-shadow 1s ease;position:relative;">
-      <div id="hfcGearPanel" style="display:none;position:absolute;top:36px;right:8px;width:220px;max-height:70vh;overflow-y:auto;background:rgba(15,20,30,.97);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:10px 12px;z-index:51;box-shadow:0 10px 30px rgba(0,0,0,.5);">
-        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:.4px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.12);">👁️ SECTIONS</div>
-        <div id="hfcGearList"></div>
-        <button id="hfcGearReset" style="width:100%;margin-top:8px;padding:6px 8px;font-size:11px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:rgba(255,255,255,.8);cursor:pointer;">↺ Reset to config defaults</button>
-      </div>
       <div style="width:100%;${this.config.full_width ? '' : 'max-width:520px;'}margin:0 auto;" role="group" aria-label="Hybrid energy flow">
         <div id="headerBar" style="position:relative;width:100%;height:32px;margin-bottom:6px;">
           <span id="dtDate" role="button" tabindex="0" style="position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--</span>
           <span id="dtTime" role="button" tabindex="0" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--:--</span>
-          <span id="wxTemp" role="button" tabindex="0" style="position:absolute;right:38px;top:50%;transform:translateY(-50%);font-size:1.5rem;font-weight:800;letter-spacing:0.5px;color:#e6edf3;white-space:nowrap;">-- °C</span>
-          <button id="hfcGearBtn" title="Toggle sections" aria-label="Toggle sections" style="position:absolute;right:0;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.4);color:rgba(255,255,255,.75);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">⚙</button>
+          <span id="wxTemp" role="button" tabindex="0" style="position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:1.5rem;font-weight:800;letter-spacing:0.5px;color:#e6edf3;white-space:nowrap;">-- °C</span>
         </div>
         <svg id="flowSvg" viewBox="0 0 520 470" style="width:100%;display:block;" role="img" aria-label="Energy flow dashboard">
           <defs>
@@ -929,9 +816,8 @@ class HybridFlowCard extends HTMLElement {
         cardEl.style.borderColor = gridLow ? '#f85149' : '#21262d';
       }
     }
-    // Apply section visibility + sync gear menu state
+    // Apply section visibility from config
     this._applySectionVisibility();
-    this._bindGearMenu();
   }
 }
 
@@ -985,7 +871,6 @@ class HybridFlowCardEditor extends HTMLElement {
           ${this._cbOn('show_inverter', '⚙️ Inverter')}
           ${this._cbOn('show_home', '🏠 Home')}
           ${this._cbOn('show_flow_lines', '〰️ Flow lines & tracks')}
-          ${this._cbOn('show_gear_menu', '⚙ Show gear menu on card')}
           ${this._cb('southern_hemisphere', '🌏 Southern hemisphere (mirror moon phase)')}
           ${this._field('moon_entity', 'Moon entity (optional, e.g. sensor.moon)')}
         </div>
