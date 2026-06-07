@@ -5,7 +5,7 @@ const L = {
   ARC_CX: 260, ARC_CY: 78, ARC_LX: 35, ARC_RX: 485,
   ARC_RISE_Y: 100, ARC_NOON_X: 260, ARC_NOON_Y: 100, ARC_SET_Y: 100,
   ARC_SUN_GLOW_R: 28, ARC_SUN_INNER_R: 14, ARC_SUN_DOT_R: 7,
-  ARC_MOON_GLOW_R: 12, ARC_MOON_DOT_R: 6,
+  ARC_MOON_GLOW_R: 22, ARC_MOON_DOT_R: 11,
 
   BATT_X: 53, BATT_Y: 145, BATT_W: 62, BATT_H: 118, BATT_R: 8,
   BATT_SHELL_X: 49, BATT_SHELL_Y: 135, BATT_SHELL_W: 70, BATT_SHELL_H: 132,
@@ -233,6 +233,164 @@ class HybridFlowCard extends HTMLElement {
     this._els = {};
   }
 
+  // ── Section visibility system ─────────────────────────────────
+  // Map: section key → array of element IDs to show/hide together
+  static get SECTION_MAP() {
+    return {
+      header:     ['headerBar'],
+      sky_arc:    ['skyAura','arcAura','arcHorizon','arcRiseDot','arcNoonDot','arcSetDot',
+                   'arcRiseLabel','arcNoonLabel','arcSetLabel','arcDayPath','arcNightPath'],
+      sun:        ['arcSunGroup'],
+      moon:       ['moonGroup'],
+      pv:         ['pvFlowGroup','arcPvLabelRect','arcPvLabelText'],
+      battery:    ['battGroup','battRemTime','fcBattVal'],
+      grid:       ['gridIconImg','fcGridVal','gridImportVal'],
+      inverter:   ['invGlowRect','invIconImg','invStatusFlow'],
+      home:       ['homeGlowRect','homeIconImg','fcLoadVal'],
+      flow_lines: ['battTrack','homeTrack','gridTrack',
+                   'flowGridIn','flowGridOut','flowBattIn','flowBattOut','flowInvLoad'],
+    };
+  }
+
+  static get SECTION_LABELS() {
+    return [
+      ['header',     '📋 Header (date/time/temp)'],
+      ['sky_arc',    '🌅 Sky arc background'],
+      ['sun',        '☀️ Sun'],
+      ['moon',       '🌙 Moon'],
+      ['pv',         '⚡ PV label & flow'],
+      ['battery',    '🔋 Battery'],
+      ['grid',       '🔌 Grid'],
+      ['inverter',   '⚙️ Inverter'],
+      ['home',       '🏠 Home'],
+      ['flow_lines', '〰️ Flow lines & tracks'],
+    ];
+  }
+
+  _sectionStorageKey() {
+    const c = this.config || {};
+    const seed = (c.card_id || '') + '|' + (c.battery_soc || '') + '|' + (c.pv1_power || '') + '|' + (c.grid_active_power || '');
+    let h = 0; for (let i = 0; i < seed.length; i++) { h = ((h << 5) - h + seed.charCodeAt(i)) | 0; }
+    return 'hfc-sections-' + (h >>> 0).toString(36);
+  }
+  _sectionOverrides() {
+    if (this._secOvrCache) return this._secOvrCache;
+    try {
+      const raw = localStorage.getItem(this._sectionStorageKey());
+      this._secOvrCache = raw ? JSON.parse(raw) : {};
+    } catch (e) { this._secOvrCache = {}; }
+    return this._secOvrCache;
+  }
+  _setSectionOverride(key, val) {
+    const ovr = { ...this._sectionOverrides() };
+    if (val === null || val === undefined) delete ovr[key]; else ovr[key] = !!val;
+    this._secOvrCache = ovr;
+    try { localStorage.setItem(this._sectionStorageKey(), JSON.stringify(ovr)); } catch (e) {}
+  }
+  _resetSectionOverrides() {
+    this._secOvrCache = {};
+    try { localStorage.removeItem(this._sectionStorageKey()); } catch (e) {}
+  }
+
+  // Resolve effective visibility for a section: runtime override > config > default-true
+  _isSectionVisible(key) {
+    const ovr = this._sectionOverrides();
+    if (key in ovr) return ovr[key];
+    const cfgVal = this.config && this.config['show_' + key];
+    return cfgVal !== false;
+  }
+
+  // Apply visibility by acting only on transitions (config-hidden ↔ config-visible).
+  // This preserves data-driven display:none from other render logic (e.g. PV label hidden when 0W).
+  _applySectionVisibility() {
+    const map = HybridFlowCard.SECTION_MAP;
+    if (!this._lastSectionState) this._lastSectionState = {};
+    Object.keys(map).forEach(key => {
+      const visible = this._isSectionVisible(key);
+      const wasVisible = this._lastSectionState[key];
+      const firstRun = wasVisible === undefined;
+
+      if (!visible && (firstRun || wasVisible)) {
+        // Transition into hidden (or first run + section is hidden by config)
+        map[key].forEach(id => {
+          const el = this._el(id);
+          if (el) el.style.display = 'none';
+        });
+      } else if (visible && wasVisible === false) {
+        // Transition into visible — clear our forced hide, let data-driven logic reassert
+        map[key].forEach(id => {
+          const el = this._el(id);
+          if (el) el.style.display = '';
+        });
+      }
+      this._lastSectionState[key] = visible;
+    });
+  }
+
+  // Bind ⚙ menu: build once, sync state on every call
+  _bindGearMenu() {
+    const sr = this.shadowRoot || this;
+    const btn = sr.getElementById ? sr.getElementById('hfcGearBtn') : this._el('hfcGearBtn');
+    const panel = this._el('hfcGearPanel');
+    const list = this._el('hfcGearList');
+    const reset = this._el('hfcGearReset');
+    if (!btn || !panel || !list || !reset) return;
+
+    // Visibility based on config
+    const showGear = this.config && this.config.show_gear_menu !== false;
+    btn.style.display = showGear ? '' : 'none';
+    if (!showGear) { panel.style.display = 'none'; return; }
+
+    const labels = HybridFlowCard.SECTION_LABELS;
+
+    // Build list + bind handlers once
+    if (!this._gearBuilt) {
+      list.innerHTML = labels.map(([k, l]) =>
+        `<label style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:12px;color:rgba(255,255,255,.85);cursor:pointer;gap:8px;">
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l}</span>
+          <input type="checkbox" data-sec="${k}" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;"/>
+        </label>`
+      ).join('');
+
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      };
+
+      list.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const key = cb.getAttribute('data-sec');
+          this._setSectionOverride(key, cb.checked);
+          this._applySectionVisibility();
+        });
+      });
+
+      reset.onclick = () => {
+        this._resetSectionOverrides();
+        this._applySectionVisibility();
+        this._bindGearMenu(); // re-sync checkbox state
+      };
+
+      if (!this._gearOutsideHandler) {
+        this._gearOutsideHandler = (e) => {
+          if (!panel || panel.style.display === 'none') return;
+          const path = e.composedPath ? e.composedPath() : [];
+          if (path.includes(panel) || path.includes(btn)) return;
+          panel.style.display = 'none';
+        };
+        document.addEventListener('click', this._gearOutsideHandler);
+      }
+
+      this._gearBuilt = true;
+    }
+
+    // Sync checkbox state every call
+    labels.forEach(([k]) => {
+      const cb = list.querySelector(`input[data-sec="${k}"]`);
+      if (cb) cb.checked = this._isSectionVisible(k);
+    });
+  }
+
   setConfig(config) {
     this.config = {
       pv1_power: '',
@@ -253,6 +411,21 @@ class HybridFlowCard extends HTMLElement {
       grid_icon: '/local/hybrid_flow/grid-icon.png',
       inv_icon: '/local/hybrid_flow/sunsynk.png',
       full_width: false,
+      // ── Section visibility (all default true) ──
+      show_header: true,
+      show_sky_arc: true,
+      show_sun: true,
+      show_moon: true,
+      show_pv: true,
+      show_battery: true,
+      show_grid: true,
+      show_inverter: true,
+      show_home: true,
+      show_flow_lines: true,
+      show_gear_menu: true,
+      // ── Moon options ──
+      moon_entity: '',
+      southern_hemisphere: false,
       ...config
     };
     if (!this._rendered) {
@@ -379,12 +552,18 @@ class HybridFlowCard extends HTMLElement {
       .sun-inner { animation: sunInnerR 2.2s ease-in-out infinite; }
       .sun-core { animation: sunCoreR 2.2s ease-in-out infinite; }
     </style>
-    <div id="hfcCard" style="background:#161b22;border:1px solid #21262d;border-radius:12px;padding:6px 13px 13px 13px;box-shadow:0 4px 20px rgba(0,0,0,.4);width:100%;box-sizing:border-box;transition:box-shadow 1s ease;">
+    <div id="hfcCard" style="background:#161b22;border:1px solid #21262d;border-radius:12px;padding:6px 13px 13px 13px;box-shadow:0 4px 20px rgba(0,0,0,.4);width:100%;box-sizing:border-box;transition:box-shadow 1s ease;position:relative;">
+      <div id="hfcGearPanel" style="display:none;position:absolute;top:36px;right:8px;width:220px;max-height:70vh;overflow-y:auto;background:rgba(15,20,30,.97);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:10px 12px;z-index:51;box-shadow:0 10px 30px rgba(0,0,0,.5);">
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:.4px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.12);">👁️ SECTIONS</div>
+        <div id="hfcGearList"></div>
+        <button id="hfcGearReset" style="width:100%;margin-top:8px;padding:6px 8px;font-size:11px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:rgba(255,255,255,.8);cursor:pointer;">↺ Reset to config defaults</button>
+      </div>
       <div style="width:100%;${this.config.full_width ? '' : 'max-width:520px;'}margin:0 auto;" role="group" aria-label="Hybrid energy flow">
-        <div id="headerBar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;">
-          <span id="dtDate" role="button" tabindex="0" style="font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;">--</span>
-          <span id="dtTime" role="button" tabindex="0" style="font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;">--:--</span>
-          <span id="wxTemp" role="button" tabindex="0" style="font-size:1.5rem;font-weight:800;letter-spacing:0.5px;color:#e6edf3;">-- °C</span>
+        <div id="headerBar" style="position:relative;width:100%;height:32px;margin-bottom:6px;">
+          <span id="dtDate" role="button" tabindex="0" style="position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--</span>
+          <span id="dtTime" role="button" tabindex="0" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--:--</span>
+          <span id="wxTemp" role="button" tabindex="0" style="position:absolute;right:38px;top:50%;transform:translateY(-50%);font-size:1.5rem;font-weight:800;letter-spacing:0.5px;color:#e6edf3;white-space:nowrap;">-- °C</span>
+          <button id="hfcGearBtn" title="Toggle sections" aria-label="Toggle sections" style="position:absolute;right:0;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.4);color:rgba(255,255,255,.75);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">⚙</button>
         </div>
         <svg id="flowSvg" viewBox="0 0 520 470" style="width:100%;display:block;" role="img" aria-label="Energy flow dashboard">
           <defs>
@@ -425,16 +604,16 @@ class HybridFlowCard extends HTMLElement {
             <filter id="glowYellow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="12"/></filter>
           </defs>
           <ellipse id="skyAura" cx="${L.SKY_CX}" cy="${L.SKY_CY}" rx="${L.SKY_RX}" ry="${L.SKY_RY}" fill="url(#dynAuraG)"/>
-          <path d="${L.AURA_PATH}" fill="rgba(30,100,200,.05)"/>
-          <line x1="8" y1="${L.ARC_CY}" x2="512" y2="${L.ARC_CY}" stroke="rgba(255,255,255,.12)" stroke-width="1" stroke-dasharray="3,8"/>
-          <circle cx="${L.ARC_LX}" cy="${L.ARC_CY}" r="3.5" fill="rgba(255,200,80,.7)"/>
-          <circle cx="${L.ARC_CX}" cy="${L.ARC_CY}" r="2.5" fill="rgba(255,255,255,.25)"/>
-          <circle cx="${L.ARC_RX}" cy="${L.ARC_CY}" r="3.5" fill="rgba(255,110,55,.7)"/>
+          <path id="arcAura" d="${L.AURA_PATH}" fill="rgba(30,100,200,.05)"/>
+          <line id="arcHorizon" x1="8" y1="${L.ARC_CY}" x2="512" y2="${L.ARC_CY}" stroke="rgba(255,255,255,.12)" stroke-width="1" stroke-dasharray="3,8"/>
+          <circle id="arcRiseDot" cx="${L.ARC_LX}" cy="${L.ARC_CY}" r="3.5" fill="rgba(255,200,80,.7)"/>
+          <circle id="arcNoonDot" cx="${L.ARC_CX}" cy="${L.ARC_CY}" r="2.5" fill="rgba(255,255,255,.25)"/>
+          <circle id="arcSetDot" cx="${L.ARC_RX}" cy="${L.ARC_CY}" r="3.5" fill="rgba(255,110,55,.7)"/>
           <text id="arcRiseLabel" x="${L.ARC_LX}" y="${L.ARC_RISE_Y}" fill="#ffffff" font-size="14" font-weight="600" text-anchor="middle">06:00</text>
-          <text x="${L.ARC_NOON_X}" y="${L.ARC_NOON_Y}" fill="#ffffff" font-size="14" font-weight="600" text-anchor="middle">12:00</text>
+          <text id="arcNoonLabel" x="${L.ARC_NOON_X}" y="${L.ARC_NOON_Y}" fill="#ffffff" font-size="14" font-weight="600" text-anchor="middle">12:00</text>
           <text id="arcSetLabel" x="${L.ARC_RX}" y="${L.ARC_SET_Y}" fill="#ffffff" font-size="14" font-weight="600" text-anchor="middle">18:00</text>
-          <path d="M ${L.ARC_LX},${L.ARC_CY} Q ${L.ARC_CX},-45 ${L.ARC_RX},${L.ARC_CY}" fill="none" stroke="url(#arcDayGrad)" stroke-width="2.2"/>
-          <path d="M ${L.ARC_RX},${L.ARC_CY} Q ${L.ARC_CX},158 ${L.ARC_LX},${L.ARC_CY}" fill="none" stroke="url(#arcNightGrad)" stroke-width="1.5" stroke-dasharray="4,5" opacity=".35"/>
+          <path id="arcDayPath" d="M ${L.ARC_LX},${L.ARC_CY} Q ${L.ARC_CX},-45 ${L.ARC_RX},${L.ARC_CY}" fill="none" stroke="url(#arcDayGrad)" stroke-width="2.2"/>
+          <path id="arcNightPath" d="M ${L.ARC_RX},${L.ARC_CY} Q ${L.ARC_CX},158 ${L.ARC_LX},${L.ARC_CY}" fill="none" stroke="url(#arcNightGrad)" stroke-width="1.5" stroke-dasharray="4,5" opacity=".35"/>
           <g id="arcSunGroup" opacity="1">
             <circle id="arcSunGlow2" cx="${L.ARC_CX}" cy="35" r="${L.ARC_SUN_GLOW_R}" fill="rgba(255,200,60,.12)" filter="url(#arcSunF)" class="sun-glow" style="transform-origin:${L.ARC_CX}px 35px;"/>
             <circle id="arcSunGlow1" cx="${L.ARC_CX}" cy="35" r="${L.ARC_SUN_INNER_R}" fill="rgba(255,200,60,.5)" filter="url(#arcSunF2)" class="sun-inner" style="transform-origin:${L.ARC_CX}px 35px;"/>
@@ -442,7 +621,9 @@ class HybridFlowCard extends HTMLElement {
           </g>
           <g id="moonGroup" opacity="0" filter="url(#moonF)">
             <circle id="moonGlow" cx="${L.ARC_CX}" cy="72" r="${L.ARC_MOON_GLOW_R}" fill="rgba(180,205,255,.18)"/>
-            <circle id="moonDot" cx="${L.ARC_CX}" cy="72" r="${L.ARC_MOON_DOT_R}" fill="rgba(220,235,255,.92)" stroke="rgba(240,248,255,.9)" stroke-width="1.2"/>
+            <circle id="moonDark" cx="${L.ARC_CX}" cy="72" r="${L.ARC_MOON_DOT_R}" fill="rgba(30,40,60,.55)" stroke="rgba(240,248,255,.9)" stroke-width="1.2"/>
+            <path id="moonLit" d="" fill="rgba(220,235,255,.92)"/>
+            <circle id="moonDot" cx="${L.ARC_CX}" cy="72" r="${L.ARC_MOON_DOT_R}" fill="rgba(220,235,255,.92)" stroke="rgba(240,248,255,.9)" stroke-width="1.2" style="display:none"/>
           </g>
           <g id="pvFlowGroup"></g>
           <rect id="arcPvLabelRect" x="${L.PV_LABEL_DEF_X}" y="${L.PV_LABEL_DEF_Y}" width="${L.PV_LABEL_W}" height="${L.PV_LABEL_H}" rx="${L.PV_LABEL_R}" fill="rgba(20,18,10,0.92)" stroke="rgba(255,210,60,.9)" stroke-width="1.5" role="button" tabindex="0"/>
@@ -536,10 +717,52 @@ class HybridFlowCard extends HTMLElement {
     this._el('arcSunGroup')?.setAttribute('opacity', sun.night ? '0' : '1');
 
     if (sun.night) {
-      ['moonGlow', 'moonDot'].forEach(id => {
+      // Compute phase: 0=new, 0.25=first qtr, 0.5=full, 0.75=last qtr
+      let mPhase;
+      const moonEntId = this.config && this.config.moon_entity;
+      const moonState = moonEntId && this._hass.states && this._hass.states[moonEntId];
+      if (moonState) {
+        const map = { new_moon:0, waxing_crescent:0.125, first_quarter:0.25, waxing_gibbous:0.375,
+                      full_moon:0.5, waning_gibbous:0.625, last_quarter:0.75, waning_crescent:0.875 };
+        mPhase = map[String(moonState.state).toLowerCase()] ?? 0.5;
+      } else {
+        // Synodic month formula; reference new moon JD 2451550.1 (2000-01-06 18:14 UTC)
+        const jd = Date.now() / 86400000 + 2440587.5;
+        mPhase = (((jd - 2451550.1) / 29.530588853) % 1 + 1) % 1;
+      }
+      const mcx = parseFloat(sun.mx), mcy = parseFloat(sun.my);
+      const mR = parseFloat(L.ARC_MOON_DOT_R);
+      // Move glow + dark base + (hidden) dot to current position
+      ['moonGlow', 'moonDark', 'moonDot'].forEach(id => {
         const e = this._el(id);
-        if (e) { e.setAttribute('cx', sun.mx); e.setAttribute('cy', sun.my); }
+        if (e) { e.setAttribute('cx', mcx); e.setAttribute('cy', mcy); }
       });
+      // Compute the lit-region path
+      const isNew = mPhase < 0.02 || mPhase > 0.98;
+      const isFull = Math.abs(mPhase - 0.5) < 0.02;
+      const litEl = this._el('moonLit');
+      const darkEl = this._el('moonDark');
+      if (litEl && darkEl) {
+        if (isNew) {
+          litEl.setAttribute('d', '');
+          darkEl.style.display = '';
+        } else if (isFull) {
+          // Full moon: lit path = full circle
+          litEl.setAttribute('d', `M ${mcx},${mcy-mR} A ${mR},${mR} 0 1 1 ${mcx},${mcy+mR} A ${mR},${mR} 0 1 1 ${mcx},${mcy-mR} Z`);
+          darkEl.style.display = '';
+        } else {
+          const rx = (mR * Math.abs(Math.cos(2 * Math.PI * mPhase))).toFixed(2);
+          const waxing = mPhase < 0.5;
+          const gibbous = mPhase > 0.25 && mPhase < 0.75;
+          const southern = this.config && this.config.southern_hemisphere === true;
+          const showRightLit = southern ? !waxing : waxing;
+          const outerSweep = showRightLit ? 1 : 0;
+          const innerSweep = gibbous ? outerSweep : (1 - outerSweep);
+          litEl.setAttribute('d',
+            `M ${mcx},${mcy-mR} A ${mR},${mR} 0 0 ${outerSweep} ${mcx},${mcy+mR} A ${rx},${mR} 0 0 ${innerSweep} ${mcx},${mcy-mR} Z`);
+          darkEl.style.display = '';
+        }
+      }
       this._el('moonGroup')?.setAttribute('opacity', '1');
     } else {
       this._el('moonGroup')?.setAttribute('opacity', '0');
@@ -706,6 +929,9 @@ class HybridFlowCard extends HTMLElement {
         cardEl.style.borderColor = gridLow ? '#f85149' : '#21262d';
       }
     }
+    // Apply section visibility + sync gear menu state
+    this._applySectionVisibility();
+    this._bindGearMenu();
   }
 }
 
@@ -746,6 +972,24 @@ class HybridFlowCardEditor extends HTMLElement {
         ${this._field('outdoor_temp', 'Outdoor Temperature (optional)')}
         ${this._field('sun', 'Sun Entity')}
         ${this._cb('full_width', 'Full Width')}
+
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--divider-color,#333)">
+          <div style="font-size:12px;font-weight:600;color:var(--primary-text-color);margin-bottom:8px;letter-spacing:.4px">👁️ SECTION VISIBILITY</div>
+          ${this._cbOn('show_header', '📋 Header (date/time/temp)')}
+          ${this._cbOn('show_sky_arc', '🌅 Sky arc background')}
+          ${this._cbOn('show_sun', '☀️ Sun')}
+          ${this._cbOn('show_moon', '🌙 Moon (phase-aware)')}
+          ${this._cbOn('show_pv', '⚡ PV label & flow')}
+          ${this._cbOn('show_battery', '🔋 Battery')}
+          ${this._cbOn('show_grid', '🔌 Grid')}
+          ${this._cbOn('show_inverter', '⚙️ Inverter')}
+          ${this._cbOn('show_home', '🏠 Home')}
+          ${this._cbOn('show_flow_lines', '〰️ Flow lines & tracks')}
+          ${this._cbOn('show_gear_menu', '⚙ Show gear menu on card')}
+          ${this._cb('southern_hemisphere', '🌏 Southern hemisphere (mirror moon phase)')}
+          ${this._field('moon_entity', 'Moon entity (optional, e.g. sensor.moon)')}
+        </div>
+
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--divider-color,#333)">
           <details>
             <summary style="font-size:12px;color:var(--secondary-text-color);cursor:pointer">Advanced icon paths</summary>
@@ -773,6 +1017,15 @@ class HybridFlowCardEditor extends HTMLElement {
   _cb(key, label) {
     const checked = this._config[key] ? 'checked' : '';
     return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:4px 0">
+      <input id="hfc-${key}" type="checkbox" ${checked} style="width:18px;height:18px;accent-color:var(--accent-color,#58a6ff);cursor:pointer">
+      <label for="hfc-${key}" style="font-size:12px;font-weight:500;color:var(--secondary-text-color);cursor:pointer">${label}</label>
+    </div>`;
+  }
+
+  // Like _cb but defaults to CHECKED when the value is undefined (for show_* toggles where unset = true)
+  _cbOn(key, label) {
+    const checked = (this._config[key] === false) ? '' : 'checked';
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:2px 0">
       <input id="hfc-${key}" type="checkbox" ${checked} style="width:18px;height:18px;accent-color:var(--accent-color,#58a6ff);cursor:pointer">
       <label for="hfc-${key}" style="font-size:12px;font-weight:500;color:var(--secondary-text-color);cursor:pointer">${label}</label>
     </div>`;
@@ -811,4 +1064,6 @@ class HybridFlowCardEditor extends HTMLElement {
   }
 }
 
-customElements.define('hybrid-flow-card-editor', HybridFlowCardEditor);
+if (!customElements.get('hybrid-flow-card-editor')) {
+  customElements.define('hybrid-flow-card-editor', HybridFlowCardEditor);
+}
