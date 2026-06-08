@@ -379,6 +379,30 @@ class HybridFlowCard extends HTMLElement {
       });
     }
 
+    const moonGroup = root.getElementById('moonGroup');
+    if (moonGroup) {
+      moonGroup.addEventListener('click', () => {
+        const lbl = this._el('moonPhaseLabel');
+        if (!lbl) return;
+        if (lbl.style.display !== 'none') { lbl.style.display = 'none'; return; }
+        // Get phase text from sensor, fallback to computed label stored on element
+        const moonEntId = this.config && this.config.moon_entity;
+        const state = moonEntId && this._hass && this._hass.states[moonEntId];
+        const raw = state ? state.state : (lbl.dataset.phase || '');
+        const label = raw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        lbl.textContent = label || '🌙';
+        // Position just below the moon disc
+        const mcx = parseFloat(moonGroup.querySelector('circle').getAttribute('cx') || '260');
+        const mcy = parseFloat(moonGroup.querySelector('circle').getAttribute('cy') || '72');
+        lbl.setAttribute('x', mcx);
+        lbl.setAttribute('y', mcy + parseFloat(L.ARC_MOON_DOT_R) + 14);
+        lbl.style.display = '';
+        // Auto-hide after 4 seconds
+        clearTimeout(this._moonLabelTimer);
+        this._moonLabelTimer = setTimeout(() => { lbl.style.display = 'none'; }, 4000);
+      });
+    }
+
     const clickMap = [
       ['arcPvLabelRect', 'pv_total_power'],
       ['arcPvLabelText', 'pv_total_power'],
@@ -506,12 +530,13 @@ class HybridFlowCard extends HTMLElement {
             <circle id="arcSunGlow1" cx="${L.ARC_CX}" cy="35" r="${L.ARC_SUN_INNER_R}" fill="rgba(255,200,60,.5)" filter="url(#arcSunF2)" class="sun-inner" style="transform-origin:${L.ARC_CX}px 35px;"/>
             <circle id="arcSunDot" cx="${L.ARC_CX}" cy="35" r="${L.ARC_SUN_DOT_R}" fill="url(#sunCG)" stroke="rgba(255,255,200,.85)" stroke-width="1.2" class="sun-core" style="transform-origin:${L.ARC_CX}px 35px;"/>
           </g>
-          <g id="moonGroup" opacity="0" filter="url(#moonF)">
+          <g id="moonGroup" opacity="0" filter="url(#moonF)" style="cursor:pointer;">
             <circle id="moonGlow" cx="${L.ARC_CX}" cy="72" r="${L.ARC_MOON_GLOW_R}" fill="rgba(180,205,255,.18)"/>
             <circle id="moonDark" cx="${L.ARC_CX}" cy="72" r="${L.ARC_MOON_DOT_R}" fill="rgba(30,40,60,.55)" stroke="rgba(240,248,255,.9)" stroke-width="1.2"/>
             <path id="moonLit" d="" fill="rgba(220,235,255,.92)"/>
             <circle id="moonDot" cx="${L.ARC_CX}" cy="72" r="${L.ARC_MOON_DOT_R}" fill="rgba(220,235,255,.92)" stroke="rgba(240,248,255,.9)" stroke-width="1.2" style="display:none"/>
           </g>
+          <text id="moonPhaseLabel" x="${L.ARC_CX}" y="72" text-anchor="middle" font-size="13" font-weight="700" fill="rgba(220,235,255,.95)" style="display:none;paint-order:stroke;stroke:rgba(0,0,0,.8);stroke-width:3px;pointer-events:none;"></text>
           <g id="pvFlowGroup"></g>
           <rect id="arcPvLabelRect" x="${L.PV_LABEL_DEF_X}" y="${L.PV_LABEL_DEF_Y}" width="${L.PV_LABEL_W}" height="${L.PV_LABEL_H}" rx="${L.PV_LABEL_R}" fill="rgba(20,18,10,0.92)" stroke="rgba(255,210,60,.9)" stroke-width="1.5" role="button" tabindex="0"/>
           <text id="arcPvLabelText" x="${L.PV_LABEL_DEF_X + L.PV_LABEL_W / 2}" y="${L.PV_LABEL_DEF_Y + 22}" text-anchor="middle" fill="rgba(255,235,110,.98)" font-size="16" font-weight="800" role="button" tabindex="0">0 W ⚡</text>
@@ -617,6 +642,10 @@ class HybridFlowCard extends HTMLElement {
         const jd = Date.now() / 86400000 + 2440587.5;
         mPhase = (((jd - 2451550.1) / 29.530588853) % 1 + 1) % 1;
       }
+      // Store phase label for click handler (used when no moon_entity)
+      const phaseNames = ['new_moon','waxing_crescent','first_quarter','waxing_gibbous','full_moon','waning_gibbous','last_quarter','waning_crescent'];
+      const lbl = this._el('moonPhaseLabel');
+      if (lbl) lbl.dataset.phase = phaseNames[Math.round(mPhase * 8) % 8];
       const mcx = parseFloat(sun.mx), mcy = parseFloat(sun.my);
       const mR = parseFloat(L.ARC_MOON_DOT_R);
       // Move glow + dark base + (hidden) dot to current position
