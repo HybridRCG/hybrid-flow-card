@@ -725,7 +725,7 @@ class HybridFlowCard extends HTMLElement {
     const solarRadVal = this._el('solarRadVal');
     if (solarRadBar && solarRadVal) {
       const rad = this._val(this.config.solar_radiation);
-      const showRad = this.config.solar_radiation && this.config.show_solar_radiation !== false;
+      const showRad = this.config.solar_radiation && this.config.show_solar_radiation !== false && rad !== undefined && rad > 0;
       solarRadBar.style.display = showRad ? '' : 'none';
       if (showRad) {
         solarRadVal.textContent = rad !== undefined ? rad.toFixed(0) + ' W/m²' : '-- W/m²';
