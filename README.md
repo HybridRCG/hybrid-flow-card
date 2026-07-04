@@ -87,6 +87,7 @@ battery_power: sensor.your_battery_power
 | `goodwe_battery_soc` | — | Fallback battery SOC (GoodWe inverter) |
 | `remaining_time` | — | Battery remaining time display |
 | `outdoor_temp` | — | Outdoor temperature sensor |
+| `solar_radiation` | — | Solar irradiance sensor (W/m²) — displayed below the temperature |
 | `sun` | `sun.sun` | Sun entity (for sunrise/set times) |
 | `moon_entity` | — | Moon phase entity (e.g. `sensor.moon` from HA Moon integration) |
 
@@ -116,6 +117,7 @@ All sections are visible by default. Set any to `false` to hide it permanently.
 | `show_inverter` | `true` | Inverter icon, glow, and status label |
 | `show_home` | `true` | Home icon, glow, and load value |
 | `show_flow_lines` | `true` | All animated dashed flow lines and track paths |
+| `show_solar_radiation` | `true` | Solar irradiance value shown below the temperature (hidden if `solar_radiation` entity not set) |
 
 Example — hide the moon and flow lines:
 
