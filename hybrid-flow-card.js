@@ -477,7 +477,7 @@ class HybridFlowCard extends HTMLElement {
           <span id="dtDate" role="button" tabindex="0" style="position:absolute;left:0;top:4px;font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--</span>
           <span id="dtTime" role="button" tabindex="0" style="position:absolute;left:50%;top:4px;transform:translateX(-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--:--</span>
           <span id="wxTemp" role="button" tabindex="0" style="position:absolute;right:0;top:4px;font-size:1.5rem;font-weight:800;letter-spacing:0.5px;color:#e6edf3;white-space:nowrap;">-- °C</span>
-          <div id="solarRadBar" style="display:none;position:absolute;right:0;top:28px;font-size:0.85rem;font-weight:700;color:#f4d03f;letter-spacing:0.2px;line-height:1;">
+          <div id="solarRadBar" style="display:none;position:absolute;right:0;top:32px;font-size:0.85rem;font-weight:700;color:#f4d03f;letter-spacing:0.2px;line-height:1;">
             ☀️ <span id="solarRadVal">-- W/m²</span>
           </div>
         </div>
