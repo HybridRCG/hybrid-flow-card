@@ -37,7 +37,7 @@ const L = {
   FLOW_BATT_D: 'M 59,175 H 132 V 205 H 205',
   FLOW_INV_LOAD_D: 'M 315,202 H 361 V 175 H 407',
 
-  VIEW_W: 520, VIEW_H_FULL: 470, VIEW_H_CROP: 295,
+  VIEW_W: 520, VIEW_H_FULL: 518, VIEW_H_CROP: 343,
   SKY_CX: 260, SKY_CY: 84, SKY_RX: 230, SKY_RY: 110,
   AURA_PATH: 'M 35,78 Q 260,-45 485,78 Z',
   DASH_LINE: 'M 8,78 L 512,78',
@@ -471,17 +471,17 @@ class HybridFlowCard extends HTMLElement {
       .sun-inner { animation: sunInnerR 2.2s ease-in-out infinite; }
       .sun-core { animation: sunCoreR 2.2s ease-in-out infinite; }
     </style>
-    <div id="hfcCard" style="background:#161b22;border:1px solid #21262d;border-radius:12px;padding:6px 13px 13px 13px;box-shadow:0 4px 20px rgba(0,0,0,.4);width:100%;box-sizing:border-box;transition:box-shadow 1s ease;position:relative;">
+    <div id="hfcCard" style="background:#161b22;border:1px solid #21262d;border-radius:0 0 12px 12px;border-top:none;padding:0 13px 13px 13px;box-shadow:0 4px 20px rgba(0,0,0,.4);width:100%;box-sizing:border-box;transition:box-shadow 1s ease;position:relative;overflow:hidden;">
       <div style="width:100%;${this.config.full_width ? '' : 'max-width:520px;'}margin:0 auto;" role="group" aria-label="Hybrid energy flow">
-        <div id="headerBar" style="position:relative;width:100%;height:32px;margin-bottom:6px;">
-          <span id="dtDate" role="button" tabindex="0" style="position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--</span>
-          <span id="dtTime" role="button" tabindex="0" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--:--</span>
-          <span id="wxTemp" role="button" tabindex="0" style="position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:1.5rem;font-weight:800;letter-spacing:0.5px;color:#e6edf3;white-space:nowrap;">-- °C</span>
+        <div id="headerBar" style="position:relative;width:100%;height:48px;margin-bottom:0;">
+          <span id="dtDate" role="button" tabindex="0" style="position:absolute;left:0;top:4px;font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--</span>
+          <span id="dtTime" role="button" tabindex="0" style="position:absolute;left:50%;top:4px;transform:translateX(-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--:--</span>
+          <span id="wxTemp" role="button" tabindex="0" style="position:absolute;right:0;top:4px;font-size:1.5rem;font-weight:800;letter-spacing:0.5px;color:#e6edf3;white-space:nowrap;">-- °C</span>
+          <div id="solarRadBar" style="display:none;position:absolute;right:0;top:28px;font-size:0.85rem;font-weight:700;color:#f4d03f;letter-spacing:0.2px;line-height:1;">
+            ☀️ <span id="solarRadVal">-- W/m²</span>
+          </div>
         </div>
-        <div id="solarRadBar" style="display:none;text-align:right;font-size:1.1rem;font-weight:700;color:#f4d03f;letter-spacing:0.3px;margin:-2px 0 4px 0;opacity:0.9;">
-          ☀️ <span id="solarRadVal">-- W/m²</span>
-        </div>
-        <svg id="flowSvg" viewBox="0 0 520 470" style="width:100%;display:block;" role="img" aria-label="Energy flow dashboard">
+        <svg id="flowSvg" viewBox="0 0 520 518" style="width:100%;display:block;margin-top:-48px;" role="img" aria-label="Energy flow dashboard">
           <defs>
             <filter id="arcSunF" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="7"/></filter>
             <filter id="arcSunF2" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3"/></filter>
@@ -519,7 +519,7 @@ class HybridFlowCard extends HTMLElement {
             <filter id="glowOrange" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="12"/></filter>
             <filter id="glowYellow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="12"/></filter>
           </defs>
-          <ellipse id="skyAura" cx="${L.SKY_CX}" cy="${L.SKY_CY}" rx="${L.SKY_RX}" ry="${L.SKY_RY}" fill="url(#dynAuraG)"/>
+          <g transform="translate(0,48)"><ellipse id="skyAura" cx="${L.SKY_CX}" cy="${L.SKY_CY}" rx="${L.SKY_RX}" ry="${L.SKY_RY}" fill="url(#dynAuraG)"/>
           <path id="arcAura" d="${L.AURA_PATH}" fill="rgba(30,100,200,.05)"/>
           <line id="arcHorizon" x1="8" y1="${L.ARC_CY}" x2="512" y2="${L.ARC_CY}" stroke="rgba(255,255,255,.12)" stroke-width="1" stroke-dasharray="3,8"/>
           <circle id="arcRiseDot" cx="${L.ARC_LX}" cy="${L.ARC_CY}" r="3.5" fill="rgba(255,200,80,.7)"/>
@@ -587,7 +587,7 @@ class HybridFlowCard extends HTMLElement {
           <rect id="homeGlowRect" x="${L.HOME_GLOW_X}" y="${L.HOME_GLOW_Y}" width="${L.HOME_R * 2}" height="${L.HOME_R * 2}" rx="${L.HOME_R}" fill="#ffb228" filter="url(#glowYellow)" opacity="0.4" style="animation:hfcPulseHome 5s ease-in-out infinite;"/>
           <image id="homeIconImg" href="${this.config.home_icon}" x="${L.HOME_IMG_X}" y="${L.HOME_IMG_Y}" width="${L.HOME_IMG_W}" height="${L.HOME_IMG_H}" preserveAspectRatio="xMidYMid meet" style="opacity:1;" role="button" tabindex="0"/>
           <text id="fcLoadVal" x="${L.HOME_LOAD_X}" y="${L.HOME_LOAD_Y}" text-anchor="middle" font-size="24" font-weight="900" fill="#F7F6D3" style="paint-order: stroke; stroke: rgba(0,0,0,0.7); stroke-width: 3px;" role="button" tabindex="0">-- W</text>
-        </svg>
+        </g></svg>
       </div>
     </div>`;
     requestAnimationFrame(() => {
