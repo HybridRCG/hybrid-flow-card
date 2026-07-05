@@ -299,6 +299,7 @@ class HybridFlowCard extends HTMLElement {
       goodwe_battery_soc: '',
       outdoor_temp: '',
       solar_radiation: '',
+      daily_rainfall: '',
       remaining_time: '',
       grid_voltage: '',
       sun: 'sun.sun',
@@ -318,6 +319,7 @@ class HybridFlowCard extends HTMLElement {
       show_home: true,
       show_flow_lines: true,
       show_solar_radiation: true,
+      show_rainfall: true,
       // ── Moon options ──
       moon_entity: '',
       southern_hemisphere: false,
@@ -477,8 +479,11 @@ class HybridFlowCard extends HTMLElement {
           <span id="dtDate" role="button" tabindex="0" style="position:absolute;left:0;top:4px;font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--</span>
           <span id="dtTime" role="button" tabindex="0" style="position:absolute;left:50%;top:4px;transform:translateX(-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--:--</span>
           <span id="wxTemp" role="button" tabindex="0" style="position:absolute;right:0;top:4px;font-size:1.5rem;font-weight:800;letter-spacing:0.5px;color:#e6edf3;white-space:nowrap;">-- °C</span>
-          <div id="solarRadBar" style="display:none;position:absolute;right:0;top:32px;font-size:0.85rem;font-weight:700;color:#f4d03f;letter-spacing:0.2px;line-height:1;">
+          <div id="solarRadBar" style="display:none;position:absolute;left:0;top:32px;font-size:0.85rem;font-weight:700;color:#f4d03f;letter-spacing:0.2px;line-height:1;">
             ☀️ <span id="solarRadVal">-- W/m²</span>
+          </div>
+          <div id="rainfallBar" style="display:none;position:absolute;right:0;top:32px;font-size:0.85rem;font-weight:700;color:#58a6ff;letter-spacing:0.2px;line-height:1;">
+            🌧️ <span id="rainfallVal">-- mm</span>
           </div>
         </div>
         <svg id="flowSvg" viewBox="0 0 520 518" style="width:100%;display:block;margin-top:-48px;" role="img" aria-label="Energy flow dashboard">
@@ -737,6 +742,17 @@ class HybridFlowCard extends HTMLElement {
       }
     }
 
+    const rainfallBar = this._el('rainfallBar');
+    const rainfallVal = this._el('rainfallVal');
+    if (rainfallBar && rainfallVal) {
+      const rain = this._val(this.config.daily_rainfall);
+      const showRain = this.config.daily_rainfall && this.config.show_rainfall !== false && rain !== undefined && rain > 0;
+      rainfallBar.style.display = showRain ? '' : 'none';
+      if (showRain) {
+        rainfallVal.textContent = rain.toFixed(1) + ' mm';
+      }
+    }
+
     if (pvTotal !== this._prevPvTotal || sun.bx !== this._prevSunPos.bx || sun.by !== this._prevSunPos.by) {
       this._prevPvTotal = pvTotal;
       this._prevSunPos = { bx: sun.bx, by: sun.by };
@@ -907,6 +923,7 @@ class HybridFlowCardEditor extends HTMLElement {
         ${this._field('consump', 'House Consumption')}
         ${this._field('outdoor_temp', 'Outdoor Temperature (optional)')}
         ${this._field('solar_radiation', 'Solar Irradiance (optional, e.g. sensor.gw2000a_wifia7a3_solar_irradiance)')}
+        ${this._field('daily_rainfall', 'Daily Rainfall (optional, e.g. sensor.gw2000a_wifia7a3_daily_piezo_rainfall)')}
         ${this._field('sun', 'Sun Entity')}
         ${this._cb('full_width', 'Full Width')}
 
@@ -922,7 +939,8 @@ class HybridFlowCardEditor extends HTMLElement {
           ${this._cbOn('show_inverter', '⚙️ Inverter')}
           ${this._cbOn('show_home', '🏠 Home')}
           ${this._cbOn('show_flow_lines', '〰️ Flow lines & tracks')}
-          ${this._cbOn('show_solar_radiation', '🌤️ Solar irradiance (below temp)')}
+          ${this._cbOn('show_solar_radiation', '🌤️ Solar irradiance (below date)')}
+          ${this._cbOn('show_rainfall', '🌧️ Daily rainfall (below temp)')}
           ${this._cb('southern_hemisphere', '🌏 Southern hemisphere (mirror moon phase)')}
           ${this._field('moon_entity', 'Moon entity (optional, e.g. sensor.moon)')}
         </div>
