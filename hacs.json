@@ -5,6 +5,11 @@
   "category": "lovelace",
   "homeassistant": "2023.8.0",
   "description": "Solar / battery / grid energy flow visualization card with animated power lines, sun arc, and battery SOC fill.",
-  "country": ["ZA"],
-  "authors": ["Riaan Grobler <hybrid.rcg@gmail.com>"]
+  "country": [
+    "ZA"
+  ],
+  "authors": [
+    "Riaan Grobler <hybrid.rcg@gmail.com>"
+  ],
+  "version": "1.0.0"
 }

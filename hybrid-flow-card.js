@@ -1,4 +1,5 @@
 // hybrid-flow-card.js – Energy flow visualization (2 PV strings + auto‑sum)
+// Version: 1.0.0
 // Place grid-icon.png and home-icon.png in /config/www/hybrid_flow/
 
 const L = {
@@ -825,12 +826,14 @@ if (!customElements.get('hybrid-flow-card')) {
   customElements.define('hybrid-flow-card', HybridFlowCard);
 }
 
+const HFC_VERSION = '1.0.0';
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'hybrid-flow-card',
   name: 'Hybrid Flow Card',
   description: 'Solar / Battery / Grid energy flow visualization with sun arc, battery fill, and animated power lines.',
   preview: false,
+  version: HFC_VERSION,
 });
 
 class HybridFlowCardEditor extends HTMLElement {
