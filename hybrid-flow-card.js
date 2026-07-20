@@ -1,5 +1,5 @@
 // hybrid-flow-card.js – Energy flow visualization (2 PV strings + auto‑sum)
-// Version: 1.0.0
+// Version: 1.0.1
 // Place grid-icon.png and home-icon.png in /config/www/hybrid_flow/
 
 const L = {
@@ -239,8 +239,8 @@ class HybridFlowCard extends HTMLElement {
   static get SECTION_MAP() {
     return {
       header:     ['headerBar'],
-      sky_arc:    ['skyAura','arcAura','arcHorizon','arcRiseDot','arcNoonDot','arcSetDot',
-                   'arcRiseLabel','arcNoonLabel','arcSetLabel','arcDayPath','arcNightPath'],
+      sky_arc:    ['skyAura','arcAura','arcHorizon','arcRiseDot','arcSetDot',
+                   'arcRiseLabel','arcSetLabel','arcDayPath','arcNightPath'],
       sun:        ['arcSunGroup'],
       moon:       ['moonGroup'],
       pv:         ['pvFlowGroup','arcPvLabelRect','arcPvLabelText'],
@@ -495,11 +495,9 @@ class HybridFlowCard extends HTMLElement {
           <path id="arcAura" d="${L.AURA_PATH}" fill="rgba(30,100,200,.05)"/>
           <line id="arcHorizon" x1="8" y1="${L.ARC_CY}" x2="512" y2="${L.ARC_CY}" stroke="rgba(255,255,255,.12)" stroke-width="1" stroke-dasharray="3,8"/>
           <circle id="arcRiseDot" cx="${L.ARC_LX}" cy="${L.ARC_CY}" r="3.5" fill="rgba(255,200,80,.7)"/>
-          <circle id="arcNoonDot" cx="${L.ARC_CX}" cy="${L.ARC_CY}" r="2.5" fill="rgba(255,255,255,.25)"/>
           <circle id="arcSetDot" cx="${L.ARC_RX}" cy="${L.ARC_CY}" r="3.5" fill="rgba(255,110,55,.7)"/>
-          <text id="arcRiseLabel" x="${L.ARC_LX}" y="${L.ARC_RISE_Y}" fill="#ffffff" font-size="14" font-weight="600" text-anchor="middle">06:00</text>
-          <text id="arcNoonLabel" x="${L.ARC_NOON_X}" y="${L.ARC_NOON_Y}" fill="#ffffff" font-size="14" font-weight="600" text-anchor="middle">12:00</text>
-          <text id="arcSetLabel" x="${L.ARC_RX}" y="${L.ARC_SET_Y}" fill="#ffffff" font-size="14" font-weight="600" text-anchor="middle">18:00</text>
+          <text id="arcRiseLabel" x="${L.ARC_LX}" y="${L.ARC_RISE_Y}" fill="#ffffff" font-size="17" font-weight="700" text-anchor="middle">06:00</text>
+          <text id="arcSetLabel" x="${L.ARC_RX}" y="${L.ARC_SET_Y}" fill="#ffffff" font-size="17" font-weight="700" text-anchor="middle">18:00</text>
           <path id="arcDayPath" d="M ${L.ARC_LX},${L.ARC_CY} Q ${L.ARC_CX},-45 ${L.ARC_RX},${L.ARC_CY}" fill="none" stroke="url(#arcDayGrad)" stroke-width="2.2"/>
           <path id="arcNightPath" d="M ${L.ARC_RX},${L.ARC_CY} Q ${L.ARC_CX},158 ${L.ARC_LX},${L.ARC_CY}" fill="none" stroke="url(#arcNightGrad)" stroke-width="1.5" stroke-dasharray="4,5" opacity=".35"/>
           <g id="arcSunGroup" opacity="1">
@@ -826,7 +824,7 @@ if (!customElements.get('hybrid-flow-card')) {
   customElements.define('hybrid-flow-card', HybridFlowCard);
 }
 
-const HFC_VERSION = '1.0.0';
+const HFC_VERSION = '1.0.1';
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'hybrid-flow-card',
