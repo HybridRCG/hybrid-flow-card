@@ -344,6 +344,36 @@ class HybridFlowCard extends HTMLElement {
     window.dispatchEvent(new Event('location-changed'));
   }
 
+  _showMoonPhaseLabel() {
+    const moonGroup = this._el('moonGroup');
+    if (!moonGroup || moonGroup.getAttribute('opacity') !== '1') return;
+    const label = this._el('moonPhaseLabel');
+    const bg = this._el('moonPhaseLabelBg');
+    if (!label) return;
+    const names = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous',
+                    'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent'];
+    const idx = Math.round((this._moonPhase ?? 0.5) * 8) % 8;
+    const text = names[idx];
+    const mx = this._moonX ?? 260;
+    const my = (this._moonY ?? 72) - 20;
+    label.textContent = text;
+    label.setAttribute('x', mx);
+    label.setAttribute('y', my);
+    label.style.opacity = '1';
+    if (bg) {
+      const w = Math.max(70, text.length * 7.4 + 18);
+      bg.setAttribute('x', mx - w / 2);
+      bg.setAttribute('y', my - 15);
+      bg.setAttribute('width', w);
+      bg.style.opacity = '1';
+    }
+    clearTimeout(this._moonLabelTimer);
+    this._moonLabelTimer = setTimeout(() => {
+      label.style.opacity = '0';
+      if (bg) bg.style.opacity = '0';
+    }, 1800);
+  }
+
   _attachClickHandlers() {
     const root = this.shadowRoot;
     if (!root) return;
@@ -382,8 +412,13 @@ class HybridFlowCard extends HTMLElement {
       });
     }
 
+    const moonGroup = root.getElementById('moonGroup');
+    if (moonGroup) {
+      moonGroup.style.cursor = 'pointer';
+      moonGroup.addEventListener('click', () => this._showMoonPhaseLabel());
+    }
+
     const clickMap = [
-      ['moonGroup',      'moon_entity'],
       ['arcPvLabelRect', 'pv_total_power'],
       ['arcPvLabelText', 'pv_total_power'],
       ['fcBattVal',      'battery_soc'],
@@ -451,12 +486,12 @@ class HybridFlowCard extends HTMLElement {
     </style>
     <div id="hfcCard" style="background:#161b22;border:1px solid #21262d;border-radius:12px;padding:6px 13px 13px 13px;box-shadow:0 4px 20px rgba(0,0,0,.4);width:100%;box-sizing:border-box;transition:box-shadow 1s ease;position:relative;">
       <div style="width:100%;${this.config.full_width ? '' : 'max-width:520px;'}margin:0 auto;" role="group" aria-label="Hybrid energy flow">
-        <div id="headerBar" style="position:relative;width:100%;height:46px;margin-bottom:6px;">
+        <div id="headerBar" style="position:relative;width:100%;height:48px;margin-bottom:6px;">
           <span id="dtDate" role="button" tabindex="0" style="position:absolute;left:0;top:0;font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--</span>
           <span id="dtTime" role="button" tabindex="0" style="position:absolute;left:50%;top:0;transform:translateX(-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--:--</span>
           <span id="wxTemp" role="button" tabindex="0" style="position:absolute;right:0;top:0;font-size:1.5rem;font-weight:800;letter-spacing:0.5px;color:#e6edf3;white-space:nowrap;">-- °C</span>
-          <span id="wxIrr" style="position:absolute;left:0;top:28px;font-size:0.78rem;font-weight:600;color:#8b949e;white-space:nowrap;display:none;">☀️ -- W/m²</span>
-          <span id="wxRain" style="position:absolute;right:0;top:28px;font-size:0.78rem;font-weight:600;color:#8b949e;white-space:nowrap;display:none;">🌧️ -- mm</span>
+          <span id="wxIrr" style="position:absolute;left:0;top:27px;font-size:0.95rem;font-weight:700;color:#9fb0c3;white-space:nowrap;display:none;">☀️ -- W/m²</span>
+          <span id="wxRain" style="position:absolute;right:0;top:27px;font-size:0.95rem;font-weight:700;color:#9fb0c3;white-space:nowrap;display:none;">🌧️ -- mm</span>
         </div>
         <svg id="flowSvg" viewBox="0 0 520 470" style="width:100%;display:block;" role="img" aria-label="Energy flow dashboard">
           <defs>
@@ -516,6 +551,8 @@ class HybridFlowCard extends HTMLElement {
             <path id="moonLit" d="" fill="rgba(220,235,255,.92)"/>
             <circle id="moonDot" cx="${L.ARC_CX}" cy="72" r="${L.ARC_MOON_DOT_R}" fill="rgba(220,235,255,.92)" stroke="rgba(240,248,255,.9)" stroke-width="1.2" style="display:none"/>
           </g>
+          <rect id="moonPhaseLabelBg" x="0" y="0" width="0" height="26" rx="6" fill="rgba(15,20,30,0.92)" stroke="rgba(200,215,255,.5)" stroke-width="1" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"/>
+          <text id="moonPhaseLabel" x="0" y="0" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="700" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
           <g id="pvFlowGroup"></g>
           <rect id="arcPvLabelRect" x="${L.PV_LABEL_DEF_X}" y="${L.PV_LABEL_DEF_Y}" width="${L.PV_LABEL_W}" height="${L.PV_LABEL_H}" rx="${L.PV_LABEL_R}" fill="rgba(20,18,10,0.92)" stroke="rgba(255,210,60,.9)" stroke-width="1.5" role="button" tabindex="0"/>
           <text id="arcPvLabelText" x="${L.PV_LABEL_DEF_X + L.PV_LABEL_W / 2}" y="${L.PV_LABEL_DEF_Y + 22}" text-anchor="middle" fill="rgba(255,235,110,.98)" font-size="16" font-weight="800" role="button" tabindex="0">0 W ⚡</text>
@@ -621,7 +658,10 @@ class HybridFlowCard extends HTMLElement {
         const jd = Date.now() / 86400000 + 2440587.5;
         mPhase = (((jd - 2451550.1) / 29.530588853) % 1 + 1) % 1;
       }
+      this._moonPhase = mPhase;
       const mcx = parseFloat(sun.mx), mcy = parseFloat(sun.my);
+      this._moonX = mcx;
+      this._moonY = mcy;
       const mR = parseFloat(L.ARC_MOON_DOT_R);
       // Move glow + dark base + (hidden) dot to current position
       ['moonGlow', 'moonDark', 'moonDot'].forEach(id => {
