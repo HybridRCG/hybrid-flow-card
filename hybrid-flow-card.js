@@ -299,6 +299,8 @@ class HybridFlowCard extends HTMLElement {
       battery_power: '',
       goodwe_battery_soc: '',
       outdoor_temp: '',
+      irradiance_entity: '',
+      rain_entity: '',
       remaining_time: '',
       grid_voltage: '',
       sun: 'sun.sun',
@@ -381,6 +383,7 @@ class HybridFlowCard extends HTMLElement {
     }
 
     const clickMap = [
+      ['moonGroup',      'moon_entity'],
       ['arcPvLabelRect', 'pv_total_power'],
       ['arcPvLabelText', 'pv_total_power'],
       ['fcBattVal',      'battery_soc'],
@@ -448,10 +451,12 @@ class HybridFlowCard extends HTMLElement {
     </style>
     <div id="hfcCard" style="background:#161b22;border:1px solid #21262d;border-radius:12px;padding:6px 13px 13px 13px;box-shadow:0 4px 20px rgba(0,0,0,.4);width:100%;box-sizing:border-box;transition:box-shadow 1s ease;position:relative;">
       <div style="width:100%;${this.config.full_width ? '' : 'max-width:520px;'}margin:0 auto;" role="group" aria-label="Hybrid energy flow">
-        <div id="headerBar" style="position:relative;width:100%;height:32px;margin-bottom:6px;">
-          <span id="dtDate" role="button" tabindex="0" style="position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--</span>
-          <span id="dtTime" role="button" tabindex="0" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--:--</span>
-          <span id="wxTemp" role="button" tabindex="0" style="position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:1.5rem;font-weight:800;letter-spacing:0.5px;color:#e6edf3;white-space:nowrap;">-- °C</span>
+        <div id="headerBar" style="position:relative;width:100%;height:46px;margin-bottom:6px;">
+          <span id="dtDate" role="button" tabindex="0" style="position:absolute;left:0;top:0;font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--</span>
+          <span id="dtTime" role="button" tabindex="0" style="position:absolute;left:50%;top:0;transform:translateX(-50%);font-size:1.5rem;font-weight:800;color:#e6edf3;letter-spacing:0.5px;white-space:nowrap;">--:--</span>
+          <span id="wxTemp" role="button" tabindex="0" style="position:absolute;right:0;top:0;font-size:1.5rem;font-weight:800;letter-spacing:0.5px;color:#e6edf3;white-space:nowrap;">-- °C</span>
+          <span id="wxIrr" style="position:absolute;left:0;top:28px;font-size:0.78rem;font-weight:600;color:#8b949e;white-space:nowrap;display:none;">☀️ -- W/m²</span>
+          <span id="wxRain" style="position:absolute;right:0;top:28px;font-size:0.78rem;font-weight:600;color:#8b949e;white-space:nowrap;display:none;">🌧️ -- mm</span>
         </div>
         <svg id="flowSvg" viewBox="0 0 520 470" style="width:100%;display:block;" role="img" aria-label="Energy flow dashboard">
           <defs>
@@ -505,7 +510,7 @@ class HybridFlowCard extends HTMLElement {
             <circle id="arcSunGlow1" cx="${L.ARC_CX}" cy="35" r="${L.ARC_SUN_INNER_R}" fill="rgba(255,200,60,.5)" filter="url(#arcSunF2)" class="sun-inner" style="transform-origin:${L.ARC_CX}px 35px;"/>
             <circle id="arcSunDot" cx="${L.ARC_CX}" cy="35" r="${L.ARC_SUN_DOT_R}" fill="url(#sunCG)" stroke="rgba(255,255,200,.85)" stroke-width="1.2" class="sun-core" style="transform-origin:${L.ARC_CX}px 35px;"/>
           </g>
-          <g id="moonGroup" opacity="0" filter="url(#moonF)">
+          <g id="moonGroup" opacity="0" filter="url(#moonF)" role="button" tabindex="0">
             <circle id="moonGlow" cx="${L.ARC_CX}" cy="72" r="${L.ARC_MOON_GLOW_R}" fill="rgba(180,205,255,.18)"/>
             <circle id="moonDark" cx="${L.ARC_CX}" cy="72" r="${L.ARC_MOON_DOT_R}" fill="rgba(30,40,60,.55)" stroke="rgba(240,248,255,.9)" stroke-width="1.2"/>
             <path id="moonLit" d="" fill="rgba(220,235,255,.92)"/>
@@ -686,6 +691,28 @@ class HybridFlowCard extends HTMLElement {
       }
     }
 
+    const wxIrr = this._el('wxIrr');
+    if (wxIrr) {
+      const irr = this._val(this.config.irradiance_entity);
+      if (irr !== undefined && irr > 0) {
+        wxIrr.textContent = '☀️ ' + Math.round(irr) + ' W/m²';
+        wxIrr.style.display = '';
+      } else {
+        wxIrr.style.display = 'none';
+      }
+    }
+
+    const wxRain = this._el('wxRain');
+    if (wxRain) {
+      const rain = this._val(this.config.rain_entity);
+      if (rain !== undefined && rain > 0) {
+        wxRain.textContent = '🌧️ ' + rain.toFixed(1) + ' mm';
+        wxRain.style.display = '';
+      } else {
+        wxRain.style.display = 'none';
+      }
+    }
+
     if (pvTotal !== this._prevPvTotal || sun.bx !== this._prevSunPos.bx || sun.by !== this._prevSunPos.by) {
       this._prevPvTotal = pvTotal;
       this._prevSunPos = { bx: sun.bx, by: sun.by };
@@ -857,6 +884,8 @@ class HybridFlowCardEditor extends HTMLElement {
         ${this._field('remaining_time', 'Remaining Time (optional)')}
         ${this._field('consump', 'House Consumption')}
         ${this._field('outdoor_temp', 'Outdoor Temperature (optional)')}
+        ${this._field('irradiance_entity', 'Solar Irradiance (optional)')}
+        ${this._field('rain_entity', 'Daily Rainfall (optional)')}
         ${this._field('sun', 'Sun Entity')}
         ${this._cb('full_width', 'Full Width')}
 
