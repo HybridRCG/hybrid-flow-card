@@ -357,33 +357,57 @@ class HybridFlowCard extends HTMLElement {
     window.dispatchEvent(new Event('location-changed'));
   }
 
+  _applySunrisePill(lx, ly, onLeft, textW) {
+    const cdBg = this._el('moonSunriseLabelBg');
+    if (!cdBg) return;
+    const pad = 12;
+    const w = textW + pad * 2;
+    const bx = onLeft ? lx - pad : lx - textW - pad;
+    cdBg.setAttribute('x', bx);
+    cdBg.setAttribute('y', ly - 17);
+    cdBg.setAttribute('width', w);
+    cdBg.setAttribute('height', 24);
+    cdBg.style.opacity = '1';
+  }
+
   _showMoonPhaseLabel() {
     const moonGroup = this._el('moonGroup');
     if (!moonGroup || moonGroup.getAttribute('opacity') !== '1') return;
-    const label = this._el('moonPhaseLabel');
-    const bg = this._el('moonPhaseLabelBg');
-    if (!label) return;
+    const geom = this._srGeom;
+    const phaseLine = this._el('moonPhaseLine');
+    const cdBg = this._el('moonSunriseLabelBg');
+    if (!geom || !phaseLine || !cdBg) return;
+
     const names = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous',
                     'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent'];
     const idx = Math.round((this._moonPhase ?? 0.5) * 8) % 8;
     const text = names[idx];
-    const mx = this._moonX ?? 260;
-    const my = (this._moonY ?? 72) - 20;
-    label.textContent = text;
-    label.setAttribute('x', mx);
-    label.setAttribute('y', my);
-    label.style.opacity = '1';
-    if (bg) {
-      const w = Math.max(70, text.length * 7.4 + 18);
-      bg.setAttribute('x', mx - w / 2);
-      bg.setAttribute('y', my - 15);
-      bg.setAttribute('width', w);
-      bg.style.opacity = '1';
-    }
+    const { lx, ly, onLeft, textW } = geom;
+
+    phaseLine.setAttribute('text-anchor', onLeft ? 'start' : 'end');
+    phaseLine.setAttribute('x', lx);
+    phaseLine.setAttribute('y', ly + 20);
+    phaseLine.textContent = text;
+    phaseLine.style.opacity = '1';
+
+    let phaseW;
+    try { phaseW = phaseLine.getBBox().width; } catch (e) { phaseW = text.length * 7; }
+    const pad = 12;
+    const w = Math.max(textW, phaseW) + pad * 2;
+    const bx = onLeft ? lx - pad : lx - Math.max(textW, phaseW) - pad;
+    cdBg.setAttribute('x', bx);
+    cdBg.setAttribute('y', ly - 17);
+    cdBg.setAttribute('width', w);
+    cdBg.setAttribute('height', 44);
+
+    this._phaseExpanded = true;
     clearTimeout(this._moonLabelTimer);
     this._moonLabelTimer = setTimeout(() => {
-      label.style.opacity = '0';
-      if (bg) bg.style.opacity = '0';
+      phaseLine.style.opacity = '0';
+      this._phaseExpanded = false;
+      if (this._srGeom) {
+        this._applySunrisePill(this._srGeom.lx, this._srGeom.ly, this._srGeom.onLeft, this._srGeom.textW);
+      }
     }, 1800);
   }
 
@@ -564,10 +588,9 @@ class HybridFlowCard extends HTMLElement {
             <path id="moonLit" d="" fill="rgba(220,235,255,.92)"/>
             <circle id="moonDot" cx="${L.ARC_CX}" cy="72" r="${L.ARC_MOON_DOT_R}" fill="rgba(220,235,255,.92)" stroke="rgba(240,248,255,.9)" stroke-width="1.2" style="display:none"/>
           </g>
-          <rect id="moonPhaseLabelBg" x="0" y="0" width="0" height="26" rx="6" fill="rgba(15,20,30,0.92)" stroke="rgba(200,215,255,.5)" stroke-width="1" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"/>
-          <text id="moonPhaseLabel" x="0" y="0" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="700" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
-          <rect id="moonSunriseLabelBg" x="0" y="0" width="0" height="24" rx="6" fill="rgba(15,20,30,0.85)" stroke="rgba(200,215,255,.4)" stroke-width="1" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"/>
+          <rect id="moonSunriseLabelBg" x="0" y="0" width="0" height="24" rx="6" fill="rgba(15,20,30,0.85)" stroke="rgba(200,215,255,.4)" stroke-width="1" opacity="0" style="pointer-events:none;transition:opacity .3s ease, height .25s ease, y .25s ease, width .25s ease;"/>
           <text id="moonSunriseLabel" x="0" y="0" fill="#9fb0c3" font-size="16" font-weight="700" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
+          <text id="moonPhaseLine" x="0" y="0" fill="#c9d6e8" font-size="13" font-weight="600" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
           <g id="pvFlowGroup"></g>
           <rect id="arcPvLabelRect" x="${L.PV_LABEL_DEF_X}" y="${L.PV_LABEL_DEF_Y}" width="${L.PV_LABEL_W}" height="${L.PV_LABEL_H}" rx="${L.PV_LABEL_R}" fill="rgba(20,18,10,0.92)" stroke="rgba(255,210,60,.9)" stroke-width="1.5" role="button" tabindex="0"/>
           <text id="arcPvLabelText" x="${L.PV_LABEL_DEF_X + L.PV_LABEL_W / 2}" y="${L.PV_LABEL_DEF_Y + 22}" text-anchor="middle" fill="rgba(255,235,110,.98)" font-size="16" font-weight="800" role="button" tabindex="0">0 W ⚡</text>
@@ -726,15 +749,13 @@ class HybridFlowCard extends HTMLElement {
           cdLabel.setAttribute('y', ly);
           cdLabel.textContent = fullText;
           cdLabel.style.opacity = '1';
-          const pad = 12;
           let textW;
           try { textW = cdLabel.getBBox().width; } catch (e) { textW = fullText.length * 8; }
-          const w = textW + pad * 2;
-          const bx = onLeft ? lx - pad : lx - textW - pad;
-          cdBg.setAttribute('x', bx);
-          cdBg.setAttribute('y', ly - 17);
-          cdBg.setAttribute('width', w);
-          cdBg.style.opacity = '1';
+          this._srGeom = { lx, ly, onLeft, textW };
+          // Skip resizing the pill while it's showing the expanded phase-name line
+          if (!this._phaseExpanded) {
+            this._applySunrisePill(lx, ly, onLeft, textW);
+          }
         } else {
           cdLabel.style.opacity = '0';
           cdBg.style.opacity = '0';
@@ -744,8 +765,12 @@ class HybridFlowCard extends HTMLElement {
       this._el('moonGroup')?.setAttribute('opacity', '0');
       const cdLabelOff = this._el('moonSunriseLabel');
       const cdBgOff = this._el('moonSunriseLabelBg');
+      const phaseLineOff = this._el('moonPhaseLine');
       if (cdLabelOff) cdLabelOff.style.opacity = '0';
       if (cdBgOff) cdBgOff.style.opacity = '0';
+      if (phaseLineOff) phaseLineOff.style.opacity = '0';
+      this._phaseExpanded = false;
+      clearTimeout(this._moonLabelTimer);
     }
 
     const pvVisible = pvTotal > 0;
