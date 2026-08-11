@@ -567,7 +567,7 @@ class HybridFlowCard extends HTMLElement {
           <rect id="moonPhaseLabelBg" x="0" y="0" width="0" height="26" rx="6" fill="rgba(15,20,30,0.92)" stroke="rgba(200,215,255,.5)" stroke-width="1" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"/>
           <text id="moonPhaseLabel" x="0" y="0" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="700" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
           <rect id="moonSunriseLabelBg" x="0" y="0" width="0" height="24" rx="6" fill="rgba(15,20,30,0.85)" stroke="rgba(200,215,255,.4)" stroke-width="1" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"/>
-          <text id="moonSunriseLabel" x="0" y="0" fill="#9fb0c3" font-size="14" font-weight="700" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
+          <text id="moonSunriseLabel" x="0" y="0" fill="#9fb0c3" font-size="16" font-weight="700" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
           <g id="pvFlowGroup"></g>
           <rect id="arcPvLabelRect" x="${L.PV_LABEL_DEF_X}" y="${L.PV_LABEL_DEF_Y}" width="${L.PV_LABEL_W}" height="${L.PV_LABEL_H}" rx="${L.PV_LABEL_R}" fill="rgba(20,18,10,0.92)" stroke="rgba(255,210,60,.9)" stroke-width="1.5" role="button" tabindex="0"/>
           <text id="arcPvLabelText" x="${L.PV_LABEL_DEF_X + L.PV_LABEL_W / 2}" y="${L.PV_LABEL_DEF_Y + 22}" text-anchor="middle" fill="rgba(255,235,110,.98)" font-size="16" font-weight="800" role="button" tabindex="0">0 W ⚡</text>
@@ -726,10 +726,13 @@ class HybridFlowCard extends HTMLElement {
           cdLabel.setAttribute('y', ly);
           cdLabel.textContent = fullText;
           cdLabel.style.opacity = '1';
-          const w = fullText.length * 7.6 + 18;
-          const bx = onLeft ? lx - 9 : lx - w + 9;
+          const pad = 12;
+          let textW;
+          try { textW = cdLabel.getBBox().width; } catch (e) { textW = fullText.length * 8; }
+          const w = textW + pad * 2;
+          const bx = onLeft ? lx - pad : lx - textW - pad;
           cdBg.setAttribute('x', bx);
-          cdBg.setAttribute('y', ly - 16);
+          cdBg.setAttribute('y', ly - 17);
           cdBg.setAttribute('width', w);
           cdBg.style.opacity = '1';
         } else {
