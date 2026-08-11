@@ -566,8 +566,8 @@ class HybridFlowCard extends HTMLElement {
           </g>
           <rect id="moonPhaseLabelBg" x="0" y="0" width="0" height="26" rx="6" fill="rgba(15,20,30,0.92)" stroke="rgba(200,215,255,.5)" stroke-width="1" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"/>
           <text id="moonPhaseLabel" x="0" y="0" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="700" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
-          <rect id="moonSunriseLabelBg" x="0" y="0" width="0" height="20" rx="5" fill="rgba(15,20,30,0.85)" stroke="rgba(200,215,255,.4)" stroke-width="1" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"/>
-          <text id="moonSunriseLabel" x="0" y="0" fill="#9fb0c3" font-size="11" font-weight="600" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
+          <rect id="moonSunriseLabelBg" x="0" y="0" width="0" height="24" rx="6" fill="rgba(15,20,30,0.85)" stroke="rgba(200,215,255,.4)" stroke-width="1" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"/>
+          <text id="moonSunriseLabel" x="0" y="0" fill="#9fb0c3" font-size="14" font-weight="700" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
           <g id="pvFlowGroup"></g>
           <rect id="arcPvLabelRect" x="${L.PV_LABEL_DEF_X}" y="${L.PV_LABEL_DEF_Y}" width="${L.PV_LABEL_W}" height="${L.PV_LABEL_H}" rx="${L.PV_LABEL_R}" fill="rgba(20,18,10,0.92)" stroke="rgba(255,210,60,.9)" stroke-width="1.5" role="button" tabindex="0"/>
           <text id="arcPvLabelText" x="${L.PV_LABEL_DEF_X + L.PV_LABEL_W / 2}" y="${L.PV_LABEL_DEF_Y + 22}" text-anchor="middle" fill="rgba(255,235,110,.98)" font-size="16" font-weight="800" role="button" tabindex="0">0 W ⚡</text>
@@ -716,20 +716,20 @@ class HybridFlowCard extends HTMLElement {
       const cdText = fmtCountdown(sun.riseMinutesLeft);
       if (cdLabel && cdBg) {
         if (cdText) {
-          const fullText = 'Until sunrise: ' + cdText;
+          const fullText = 'Until Sunrise: ' + cdText;
           const onLeft = mcx < L.ARC_CX;
-          const gap = mR + 10;
+          const gap = L.ARC_MOON_GLOW_R + 26;
           const lx = onLeft ? mcx + gap : mcx - gap;
-          const ly = mcy + 4;
+          const ly = mcy + 30;
           cdLabel.setAttribute('text-anchor', onLeft ? 'start' : 'end');
           cdLabel.setAttribute('x', lx);
           cdLabel.setAttribute('y', ly);
           cdLabel.textContent = fullText;
           cdLabel.style.opacity = '1';
-          const w = fullText.length * 6.1 + 16;
-          const bx = onLeft ? lx - 8 : lx - w + 8;
+          const w = fullText.length * 7.6 + 18;
+          const bx = onLeft ? lx - 9 : lx - w + 9;
           cdBg.setAttribute('x', bx);
-          cdBg.setAttribute('y', ly - 13);
+          cdBg.setAttribute('y', ly - 16);
           cdBg.setAttribute('width', w);
           cdBg.style.opacity = '1';
         } else {
