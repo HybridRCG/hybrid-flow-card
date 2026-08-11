@@ -716,11 +716,11 @@ class HybridFlowCard extends HTMLElement {
       const cdText = fmtCountdown(sun.riseMinutesLeft);
       if (cdLabel && cdBg) {
         if (cdText) {
-          const fullText = 'Until Sunrise: ' + cdText;
+          const fullText = 'Sunrise: ' + cdText;
           const onLeft = mcx < L.ARC_CX;
           const gap = L.ARC_MOON_GLOW_R + 26;
           const lx = onLeft ? mcx + gap : mcx - gap;
-          const ly = mcy + 30;
+          const ly = Math.max(20, mcy - 34);
           cdLabel.setAttribute('text-anchor', onLeft ? 'start' : 'end');
           cdLabel.setAttribute('x', lx);
           cdLabel.setAttribute('y', ly);
