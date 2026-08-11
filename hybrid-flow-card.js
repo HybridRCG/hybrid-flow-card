@@ -54,14 +54,27 @@ function fmtTime(h) {
   return hh + 'h ' + (mm < 10 ? '0' : '') + mm + 'm';
 }
 
+function fmtCountdown(mins) {
+  if (mins == null || !isFinite(mins)) return null;
+  const hh = Math.floor(mins / 60), mm = mins % 60;
+  return hh + 'h' + mm + 'min';
+}
+
 function sunData(hass, config) {
   const sunEnt = config.sun || 'sun.sun';
   const attrs = hass?.states[sunEnt]?.attributes;
   let rise = '06:00', set = '18:00';
+  let riseMinutesLeft = null;
   if (attrs) {
     const fmt = iso => { try { const d = new Date(iso); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); } catch (e) { return null; } };
     if (attrs.next_rising) rise = fmt(attrs.next_rising) || rise;
     if (attrs.next_setting) set = fmt(attrs.next_setting) || set;
+    if (attrs.next_rising) {
+      try {
+        const riseDate = new Date(attrs.next_rising);
+        riseMinutesLeft = Math.max(0, Math.round((riseDate.getTime() - Date.now()) / 60000));
+      } catch (e) { riseMinutesLeft = null; }
+    }
   }
   const toMin = str => { const p = str.split(':').map(Number); return p[0] * 60 + p[1]; };
   const NOW = new Date(); const nowMin = NOW.getHours() * 60 + NOW.getMinutes();
@@ -79,7 +92,7 @@ function sunData(hass, config) {
     mx = Math.round((1 - tMoon) * (1 - tMoon) * 485 + 2 * (1 - tMoon) * tMoon * 260 + tMoon * tMoon * 35);
     my = Math.round((1 - tMoon) * (1 - tMoon) * 78 + 2 * (1 - tMoon) * tMoon * 158 + tMoon * tMoon * 78);
   }
-  return { rise, set, t, night, bell, bx, by, mx, my };
+  return { rise, set, t, night, bell, bx, by, mx, my, riseMinutesLeft };
 }
 
 function battFill(soc) {
@@ -553,6 +566,8 @@ class HybridFlowCard extends HTMLElement {
           </g>
           <rect id="moonPhaseLabelBg" x="0" y="0" width="0" height="26" rx="6" fill="rgba(15,20,30,0.92)" stroke="rgba(200,215,255,.5)" stroke-width="1" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"/>
           <text id="moonPhaseLabel" x="0" y="0" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="700" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
+          <rect id="moonSunriseLabelBg" x="0" y="0" width="0" height="20" rx="5" fill="rgba(15,20,30,0.85)" stroke="rgba(200,215,255,.4)" stroke-width="1" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"/>
+          <text id="moonSunriseLabel" x="0" y="0" fill="#9fb0c3" font-size="11" font-weight="600" opacity="0" style="pointer-events:none;transition:opacity .3s ease;"></text>
           <g id="pvFlowGroup"></g>
           <rect id="arcPvLabelRect" x="${L.PV_LABEL_DEF_X}" y="${L.PV_LABEL_DEF_Y}" width="${L.PV_LABEL_W}" height="${L.PV_LABEL_H}" rx="${L.PV_LABEL_R}" fill="rgba(20,18,10,0.92)" stroke="rgba(255,210,60,.9)" stroke-width="1.5" role="button" tabindex="0"/>
           <text id="arcPvLabelText" x="${L.PV_LABEL_DEF_X + L.PV_LABEL_W / 2}" y="${L.PV_LABEL_DEF_Y + 22}" text-anchor="middle" fill="rgba(255,235,110,.98)" font-size="16" font-weight="800" role="button" tabindex="0">0 W ⚡</text>
@@ -695,8 +710,39 @@ class HybridFlowCard extends HTMLElement {
         }
       }
       this._el('moonGroup')?.setAttribute('opacity', '1');
+
+      const cdLabel = this._el('moonSunriseLabel');
+      const cdBg = this._el('moonSunriseLabelBg');
+      const cdText = fmtCountdown(sun.riseMinutesLeft);
+      if (cdLabel && cdBg) {
+        if (cdText) {
+          const fullText = 'Until sunrise: ' + cdText;
+          const onLeft = mcx < L.ARC_CX;
+          const gap = mR + 10;
+          const lx = onLeft ? mcx + gap : mcx - gap;
+          const ly = mcy + 4;
+          cdLabel.setAttribute('text-anchor', onLeft ? 'start' : 'end');
+          cdLabel.setAttribute('x', lx);
+          cdLabel.setAttribute('y', ly);
+          cdLabel.textContent = fullText;
+          cdLabel.style.opacity = '1';
+          const w = fullText.length * 6.1 + 16;
+          const bx = onLeft ? lx - 8 : lx - w + 8;
+          cdBg.setAttribute('x', bx);
+          cdBg.setAttribute('y', ly - 13);
+          cdBg.setAttribute('width', w);
+          cdBg.style.opacity = '1';
+        } else {
+          cdLabel.style.opacity = '0';
+          cdBg.style.opacity = '0';
+        }
+      }
     } else {
       this._el('moonGroup')?.setAttribute('opacity', '0');
+      const cdLabelOff = this._el('moonSunriseLabel');
+      const cdBgOff = this._el('moonSunriseLabelBg');
+      if (cdLabelOff) cdLabelOff.style.opacity = '0';
+      if (cdBgOff) cdBgOff.style.opacity = '0';
     }
 
     const pvVisible = pvTotal > 0;
